@@ -1,0 +1,15 @@
+# Build
+dist/
+build/
+*.spec
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+*.egg-info/
