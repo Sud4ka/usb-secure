@@ -7,10 +7,17 @@ if [ ! -f "$APP" ]; then
     exit 1
 fi
 
-# NOPASSWD: solo pasar DISPLAY, evitar -E porque sudo bloquea WAYLAND_DISPLAY etc
+DISPLAY="${DISPLAY:-:0}"
+
+# NOPASSWD
 if sudo -n true 2>/dev/null; then
-    exec sudo DISPLAY="$DISPLAY" "$APP" "$@"
+    sudo DISPLAY="$DISPLAY" "$APP" "$@" &
+    disown
+    exit 0
 fi
 
-# Pedir contraseña en terminal
-exec xterm -geometry 80x12 -title "USB Secure" -hold -e sudo DISPLAY="$DISPLAY" "$APP"
+# Pedir contraseña en terminal (desacoplado del lanzador)
+xterm -geometry 80x12 -title "USB Secure" -hold \
+    -e "sudo DISPLAY='$DISPLAY' '$APP'" &
+disown
+exit 0
