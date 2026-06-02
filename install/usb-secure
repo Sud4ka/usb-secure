@@ -4,11 +4,38 @@ set -e
 APP="/home/sud4k/Descargas/USB_Secure"
 
 if [ ! -f "$APP" ]; then
-    echo "Error: no se encuentra $APP"
+    notify-send "USB Secure" "Error: no se encuentra $APP" -i dialog-error
     exit 1
 fi
 
-exec sudo DISPLAY="$DISPLAY" XAUTHORITY="$XAUTHORITY" \
-    WAYLAND_DISPLAY="$WAYLAND_DISPLAY" \
-    XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
-    "$APP" "$@"
+# Build env vars array
+ENV_ARGS=()
+for var in DISPLAY XAUTHORITY WAYLAND_DISPLAY XDG_RUNTIME_DIR; do
+    if [ -n "${!var}" ]; then
+        ENV_ARGS+=("$var=${!var}")
+    fi
+done
+
+# Try NOPASSWD first
+if sudo -n true 2>/dev/null; then
+    exec sudo "${ENV_ARGS[@]}" "$APP" "$@"
+fi
+
+# Ask password via zenity
+if command -v zenity &>/dev/null; then
+    PASSWORD=$(zenity --password --title="USB Secure" --text="Contraseña de sudo requerida")
+    if [ -z "$PASSWORD" ]; then
+        notify-send "USB Secure" "Contraseña requerida" -i dialog-error
+        exit 1
+    fi
+    echo "$PASSWORD" | sudo -S "${ENV_ARGS[@]}" "$APP" "$@"
+    exit $?
+fi
+
+# Last resort: try pkexec
+if command -v pkexec &>/dev/null; then
+    exec pkexec env "${ENV_ARGS[@]}" "$APP" "$@"
+fi
+
+notify-send "USB Secure" "No se pudo ejecutar como root" -i dialog-error
+exit 1

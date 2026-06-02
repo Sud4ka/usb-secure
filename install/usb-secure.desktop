@@ -2,7 +2,7 @@
 Version=1.0
 Name=USB Secure
 Comment=Cifrado de pendrives con autenticación 2FA (TOTP)
-Exec=/home/sud4k/.local/bin/usb-secure-pkexec
+Exec=/home/sud4k/.local/bin/usb-secure
 Icon=drive-removable-media
 Terminal=false
 Type=Application
