@@ -41,13 +41,19 @@ Backend: **VeraCrypt** (AES-256) + sistema de archivos **exFAT**.
 
 ## Cómo funciona
 
-### Cifrar un pendrive
+### ⚠️  ADVERTENCIA
+
+> **Cifrar una unidad BORRA TODOS LOS ARCHIVOS existentes de forma permanente.**  
+> No hay forma de recuperarlos después. Asegurate de tener un backup antes de continuar.
+
+## Cifrar un pendrive
 
 1. Conectá el pendrive → aparece en la lista
 2. Seleccioná la unidad y presioná **Cifrar**
-3. Ingresá una contraseña (mínimo 8 caracteres)
-4. La app:
-   - Limpia el dispositivo
+3. La app muestra una advertencia clara: todos los datos existentes serán borrados
+4. Ingresá una contraseña (mínimo 8 caracteres)
+5. La app:
+   - Limpia el dispositivo (escribe ceros en los primeros sectores)
    - Crea el volumen cifrado (LUKS en Linux / VeraCrypt en Windows)
    - Genera un secreto TOTP y lo guarda dentro del volumen
    - Muestra un **código QR** para escanear con Google Authenticator
