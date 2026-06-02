@@ -82,7 +82,7 @@ def build():
         "--exclude-module", "pdb",
     ]
 
-    print(f"🔨  Building {APP_NAME} for {system}...")
+    print(f"[*] Building {APP_NAME} for {system}...")
     print(f"    {'One-file mode' if use_onefile else 'Directory mode'}")
     print()
 
@@ -99,14 +99,14 @@ def build():
         result = dist / exe_name
         if result.exists():
             size_mb = result.stat().st_size / (1024 * 1024)
-            print(f"\n✅  {exe_name} creado ({size_mb:.1f} MB)")
+            print(f"\n[OK] {exe_name} creado ({size_mb:.1f} MB)")
             print(f"    {result.resolve()}")
     else:
         result = dist / APP_NAME
         if result.exists():
-            print(f"\n✅  Directorio creado: {result.resolve()}")
+            print(f"\n[OK] Directorio creado: {result.resolve()}")
 
-    print("\n💡  En Windows ejecute como Administrador.")
+    print("\n[i] En Windows ejecute como Administrador.")
     print("    En Linux ejecute con: sudo -E ./" + exe_name)
 
 
