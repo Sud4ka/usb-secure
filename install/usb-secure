@@ -1,0 +1,14 @@
+#!/bin/bash
+set -e
+
+APP="/home/sud4k/Descargas/USB_Secure"
+
+if [ ! -f "$APP" ]; then
+    echo "Error: no se encuentra $APP"
+    exit 1
+fi
+
+exec sudo DISPLAY="$DISPLAY" XAUTHORITY="$XAUTHORITY" \
+    WAYLAND_DISPLAY="$WAYLAND_DISPLAY" \
+    XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+    "$APP" "$@"

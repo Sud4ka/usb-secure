@@ -25,6 +25,14 @@ logging.basicConfig(
 def _fix_display():
     if os.geteuid() != 0:
         return
+    # Wayland
+    if "WAYLAND_DISPLAY" in os.environ and os.environ.get("WAYLAND_DISPLAY"):
+        sudo_uid = os.environ.get("SUDO_UID") or ""
+        if sudo_uid and not os.environ.get("XDG_RUNTIME_DIR"):
+            candidate = f"/run/user/{sudo_uid}"
+            if os.path.isdir(candidate):
+                os.environ["XDG_RUNTIME_DIR"] = candidate
+    # X11
     if "DISPLAY" not in os.environ or not os.environ.get("DISPLAY"):
         os.environ["DISPLAY"] = os.environ.get("DISPLAY") or ":0"
     if "XAUTHORITY" not in os.environ or not os.environ.get("XAUTHORITY"):
@@ -56,6 +64,8 @@ def _check_x_server():
             print()
             print("  Ejecute:  sudo -E python3 main.py")
             print("  Si falla: xhost +SI:localuser:root")
+            print("  En Wayland pruebe el lanzador:")
+            print("      ~/.local/bin/usb-secure-pkexec")
         print()
         print(f"  Detalle: {e}")
         print("=" * 60)
