@@ -23,6 +23,13 @@ logging.basicConfig(
 )
 
 
+def _fix_path():
+    """Ensure system sbin dirs are in PATH (lost in some PyInstaller builds)."""
+    for d in ("/sbin", "/usr/sbin", "/usr/local/sbin"):
+        if d not in os.environ.get("PATH", "").split(os.pathsep):
+            os.environ["PATH"] = f'{os.environ.get("PATH", "")}{os.pathsep}{d}'
+
+
 def _fix_display():
     if os.geteuid() != 0:
         return
@@ -147,6 +154,7 @@ def main():
     )
 
     if platform.system() != "Windows":
+        _fix_path()
         _fix_display()
 
     check_privileges()
