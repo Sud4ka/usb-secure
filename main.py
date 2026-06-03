@@ -140,6 +140,31 @@ def check_privileges():
         _check_linux()
 
 
+def _reexec_as_root():
+    """If not root on Linux, re-exec with sudo (trampoline)."""
+    if platform.system() == "Windows":
+        return
+    if os.geteuid() == 0:
+        return
+    import shlex
+    display = os.environ.get("DISPLAY", ":0")
+    args = ["sudo", f"DISPLAY={display}"]
+    # Preserve useful env vars
+    for var in ("XAUTHORITY", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR"):
+        val = os.environ.get(var)
+        if val:
+            args.append(f"{var}={val}")
+    args.append(sys.argv[0])
+    args.extend(sys.argv[1:])
+    try:
+        os.execvp("sudo", args)
+    except FileNotFoundError:
+        _show_error(
+            "Debe ejecutar como root:\n"
+            f"    sudo DISPLAY={display} {sys.argv[0]}"
+        )
+
+
 def main():
     sys.excepthook = lambda etype, value, tb: (
         logging.error(
@@ -152,6 +177,8 @@ def main():
             else None
         )
     )
+
+    _reexec_as_root()
 
     if platform.system() != "Windows":
         _fix_path()
