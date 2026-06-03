@@ -14,6 +14,7 @@ import os
 import sys
 import platform
 import logging
+import traceback
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,14 +26,12 @@ logging.basicConfig(
 def _fix_display():
     if os.geteuid() != 0:
         return
-    # Wayland
     if "WAYLAND_DISPLAY" in os.environ and os.environ.get("WAYLAND_DISPLAY"):
         sudo_uid = os.environ.get("SUDO_UID") or ""
         if sudo_uid and not os.environ.get("XDG_RUNTIME_DIR"):
             candidate = f"/run/user/{sudo_uid}"
             if os.path.isdir(candidate):
                 os.environ["XDG_RUNTIME_DIR"] = candidate
-    # X11
     if "DISPLAY" not in os.environ or not os.environ.get("DISPLAY"):
         os.environ["DISPLAY"] = os.environ.get("DISPLAY") or ":0"
     if "XAUTHORITY" not in os.environ or not os.environ.get("XAUTHORITY"):
@@ -48,101 +47,118 @@ def _fix_display():
                     break
 
 
+def _show_error(msg: str):
+    """Show error to user and exit."""
+    if platform.system() == "Windows":
+        try:
+            import tkinter.messagebox as mb
+            mb.showerror("USB Secure - Error", msg)
+        except Exception:
+            print(f"ERROR: {msg}", file=sys.stderr)
+    else:
+        print("=" * 60)
+        for line in msg.split("\n"):
+            print(f"  {line}")
+        print("=" * 60)
+    sys.exit(1)
+
+
 def _check_x_server():
     try:
         import tkinter
         root = tkinter.Tk()
         root.withdraw()
+        root.update()
         root.destroy()
         return True
     except Exception as e:
-        print("=" * 60)
-        print("  ❌  No se puede conectar al servidor gráfico")
+        msg = "No se puede conectar al servidor gráfico.\n\n" f"Detalle: {e}"
         if platform.system() == "Windows":
-            print("  Asegúrese de ejecutar en una sesión de escritorio.")
+            msg += "\n\nAsegúrese de ejecutar en una sesión de escritorio."
         else:
-            print()
-            print("  Ejecute:  sudo -E python3 main.py")
-            print("  Si falla: xhost +SI:localuser:root")
-            print("  En Wayland pruebe el lanzador:")
-            print("      ~/.local/bin/usb-secure-pkexec")
-        print()
-        print(f"  Detalle: {e}")
-        print("=" * 60)
-        return False
+            msg += (
+                "\n\nEjecute:\n    sudo -E python3 main.py\n"
+                "Si falla:\n    xhost +SI:localuser:root\n"
+                "En Wayland:\n    ~/.local/bin/usb-secure"
+            )
+        _show_error(msg)
 
 
 def _find_executable(name: str) -> bool:
     return any(
-        os.path.isfile(os.path.join(p, name)) and
-        os.access(os.path.join(p, name), os.X_OK)
-        for p in os.environ.get("PATH", "").split(":")
+        os.path.isfile(os.path.join(p, name))
+        and os.access(os.path.join(p, name), os.X_OK)
+        for p in os.environ.get("PATH", "").split(os.pathsep)
         if p
     )
 
 
 def _check_linux():
-    """Check Linux-specific dependencies."""
-    if os.geteuid() != 0 and platform.system() != "Windows":
-        print("=" * 60)
-        print("  ⚠️  En Linux debe ejecutar como root:")
-        print("      sudo -E python3 main.py")
-        print("=" * 60)
-        sys.exit(1)
+    if os.geteuid() != 0:
+        _show_error("En Linux debe ejecutar como root:\n    sudo -E python3 main.py")
 
     missing = []
     for cmd in ["cryptsetup", "mkfs.ext4", "mount", "umount", "lsblk"]:
         if not _find_executable(cmd):
             missing.append(cmd)
     if missing:
-        print("=" * 60)
-        print("  ❌  Faltan herramientas del sistema Linux:")
-        for cmd in missing:
-            print(f"      - {cmd}")
-        print()
-        print("  Instálelas con:")
-        print("      sudo apt install cryptsetup e2fsprogs mount util-linux")
-        print("=" * 60)
-        sys.exit(1)
+        _show_error(
+            "Faltan herramientas del sistema Linux:\n"
+            + "\n".join(f"    - {cmd}" for cmd in missing)
+            + "\n\nInstálelas con:\n"
+            "    sudo apt install cryptsetup e2fsprogs mount util-linux"
+        )
 
 
 def _check_windows():
-    """Check Windows-specific dependencies (VeraCrypt)."""
     vc_paths = [
         r"C:\Program Files\VeraCrypt\VeraCrypt.exe",
         r"C:\Program Files (x86)\VeraCrypt\VeraCrypt.exe",
     ]
-    found = any(os.path.exists(p) for p in vc_paths) or _find_executable("VeraCrypt.exe")
+    found = (
+        any(os.path.exists(p) for p in vc_paths)
+        or _find_executable("VeraCrypt.exe")
+    )
     if not found:
-        print("=" * 60)
-        print("  ❌  VeraCrypt no está instalado.")
-        print()
-        print("  Descárguelo desde:  https://www.veracrypt.fr")
-        print("  E instálelo en la ubicación predeterminada.")
-        print("=" * 60)
-        sys.exit(1)
+        _show_error(
+            "VeraCrypt no está instalado.\n\n"
+            "Descárguelo desde:\n"
+            "    https://www.veracrypt.fr\n"
+            "E instálelo en la ubicación predeterminada."
+        )
 
 
 def check_privileges():
-    """Check platform-appropriate privileges."""
     if platform.system() == "Windows":
-        # On Windows, check if running as admin
         try:
             import ctypes
+
             is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
             if not is_admin:
-                print("=" * 60)
-                print("  ⚠️  Ejecute como Administrador")
-                print("      (clic derecho > Ejecutar como administrador)")
-                print("=" * 60)
-                sys.exit(1)
+                _show_error(
+                    "Debe ejecutar como Administrador.\n\n"
+                    "Clic derecho sobre USB_Secure.exe >\n"
+                    "    Ejecutar como administrador"
+                )
         except Exception:
-            pass  # Can't check, proceed anyway
+            pass
     else:
         _check_linux()
 
 
 def main():
+    sys.excepthook = lambda etype, value, tb: (
+        logging.error(
+            "Unhandled:\n%s",
+            "".join(traceback.format_exception(etype, value, tb)),
+        )
+        or (
+            _show_error(f"Error inesperado:\n{value}")
+            if platform.system() == "Windows"
+            else None
+        )
+    )
+
     if platform.system() != "Windows":
         _fix_display()
 
@@ -153,8 +169,7 @@ def main():
     else:
         _check_linux()
 
-    if not _check_x_server():
-        sys.exit(1)
+    _check_x_server()
 
     import customtkinter as ctk
     from ui import App

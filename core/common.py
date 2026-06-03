@@ -20,7 +20,7 @@ def _find_executable(name: str) -> bool:
     return any(
         os.path.isfile(os.path.join(p, name)) and
         os.access(os.path.join(p, name), os.X_OK)
-        for p in os.environ.get("PATH", "").split(":")
+        for p in os.environ.get("PATH", "").split(os.pathsep)
         if p
     )
 

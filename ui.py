@@ -1,6 +1,8 @@
 import os
+import sys
 import subprocess
 import threading
+import platform
 import tkinter.messagebox as mb
 from pathlib import Path
 
@@ -11,6 +13,8 @@ from core import (
     read_totp_secret, generate_qr_image, USBCryptorError,
     get_mount_point, PLATFORM,
 )
+
+_IS_WINDOWS = platform.system() == "Windows"
 
 SELECTED_COLOR = "#1a3a5c"
 ACCENT = "#2980b9"
@@ -29,7 +33,7 @@ class DriveCard(ctk.CTkFrame):
         if drive_info.get("is_mapped"):
             icon = "🔓"
 
-        name = f"/dev/{drive_info['name']}"
+        name = drive_info['name'] if _IS_WINDOWS else f"/dev/{drive_info['name']}"
         extra = f" - {drive_info['vendor']} {drive_info['model']}".strip()
         if not extra.strip("- "):
             extra = ""
@@ -456,6 +460,9 @@ class UnlockDialog(ctk.CTkToplevel):
         self.destroy()
 
     def _open_folder(self, path):
+        if _IS_WINDOWS:
+            os.startfile(path)
+            return
         user = os.environ.get("SUDO_USER") or os.environ.get("USER")
         if user:
             subprocess.Popen(["sudo", "-u", user, "xdg-open", path])
@@ -632,6 +639,9 @@ class App(ctk.CTk):
             return
         mpoint = get_mount_point(drive["device"])
         if os.path.isdir(mpoint):
+            if _IS_WINDOWS:
+                os.startfile(mpoint)
+                return
             user = os.environ.get("SUDO_USER") or os.environ.get("USER")
             if user:
                 subprocess.Popen(["sudo", "-u", user, "xdg-open", mpoint])
