@@ -129,20 +129,7 @@ def _check_windows():
 
 
 def check_privileges():
-    if platform.system() == "Windows":
-        try:
-            import ctypes
-
-            is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
-            if not is_admin:
-                _show_error(
-                    "Debe ejecutar como Administrador.\n\n"
-                    "Clic derecho sobre USB_Secure.exe >\n"
-                    "    Ejecutar como administrador"
-                )
-        except Exception:
-            pass
-    else:
+    if platform.system() != "Windows":
         _check_linux()
 
 

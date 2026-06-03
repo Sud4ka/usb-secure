@@ -9,6 +9,7 @@ import os
 import re
 import time
 import string
+import subprocess
 from pathlib import Path
 
 from .common import (
@@ -35,6 +36,36 @@ def _vc():
         return "VeraCrypt.exe"
     raise USBCryptorError(
         "VeraCrypt no encontrado. Descárguelo de veracrypt.fr")
+
+
+def _vc_run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
+    """Run a VeraCrypt command with user-friendly error messages."""
+    try:
+        return _run(cmd, **kwargs)
+    except USBCryptorError as e:
+        msg = _check_vc_error(str(e))
+        if msg != str(e):
+            raise USBCryptorError(msg)
+        raise
+
+
+def _check_vc_error(err: str) -> str:
+    """Translate VeraCrypt error messages to user-friendly Spanish."""
+    err_lower = err.lower()
+    if "access is denied" in err_lower or "permission denied" in err_lower:
+        return (
+            "Permiso denegado por VeraCrypt.\n\n"
+            "Ejecute USB Secure como Administrador\n"
+            "(clic derecho > Ejecutar como administrador)\n\n"
+            "O active en VeraCrypt:\n"
+            "    Settings > System Integration >\n"
+            "    Allow non-admin users to use VeraCrypt"
+        )
+    if "device" in err_lower and "not found" in err_lower:
+        return f"Dispositivo no encontrado. Verifique la unidad."
+    if "incorrect password" in err_lower or "wrong password" in err_lower:
+        return "Contraseña incorrecta."
+    return err
 
 
 def _free_drive_letter(start: str = "U") -> str:
@@ -153,7 +184,7 @@ def encrypt_drive(device: str, password: str, progress_callback=None) -> dict:
 
     cb(20, "Creando volumen VeraCrypt (AES-256)...")
     # VeraCrypt Format creates the volume; we use the main exe with /create
-    _run(
+    _vc_run(
         [vc, "/create", device,
          "/encryption", "AES", "/hash", "SHA-256",
          "/filesystem", "exFAT",
@@ -164,7 +195,7 @@ def encrypt_drive(device: str, password: str, progress_callback=None) -> dict:
 
     cb(40, "Abriendo volumen cifrado...")
     letter = get_mount_point(device)
-    _run(
+    _vc_run(
         [vc, "/mount", device, "/letter", letter.rstrip(":"),
          "/password", password, "/silent"],
         desc="Montando volumen", timeout=15
@@ -188,7 +219,7 @@ def encrypt_drive(device: str, password: str, progress_callback=None) -> dict:
         )
     finally:
         cb(90, "Finalizando...")
-        _run([vc, "/dismount", device, "/silent"], check=False)
+        _vc_run([vc, "/dismount", device, "/silent"], check=False)
 
     label = f"USB-Secure ({os.path.basename(device)})"
     qr_img, uri = generate_qr_image(totp_secret, label)
@@ -208,7 +239,7 @@ def read_totp_secret(device: str, password: str) -> str:
     vc = _vc()
     letter = _free_drive_letter()
 
-    _run(
+    _vc_run(
         [vc, "/mount", device, "/letter", letter.rstrip(":"),
          "/password", password, "/silent"],
         desc="Contraseña incorrecta", timeout=15
@@ -221,7 +252,7 @@ def read_totp_secret(device: str, password: str) -> str:
             )
         return p.read_text().strip()
     finally:
-        _run([vc, "/dismount", device, "/silent"], check=False)
+        _vc_run([vc, "/dismount", device, "/silent"], check=False)
 
 
 def unlock_drive(device: str, password: str, totp_code: str) -> str:
@@ -237,7 +268,7 @@ def unlock_drive(device: str, password: str, totp_code: str) -> str:
             "Código 2FA incorrecto. Verifique su aplicación autenticadora."
         )
 
-    _run(
+    _vc_run(
         [vc, "/mount", device, "/letter", letter.rstrip(":"),
          "/password", password, "/silent"],
         desc="Error al abrir el volumen", timeout=15
@@ -247,6 +278,6 @@ def unlock_drive(device: str, password: str, totp_code: str) -> str:
 
 def lock_drive(device: str) -> bool:
     vc = _vc()
-    _run([vc, "/dismount", device, "/silent"],
-         desc="Error al cerrar el volumen", timeout=10)
+    _vc_run([vc, "/dismount", device, "/silent"],
+            desc="Error al cerrar el volumen", timeout=10)
     return True
