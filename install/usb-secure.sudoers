@@ -1,1 +1,1 @@
-sud4k ALL=(ALL) NOPASSWD: /home/sud4k/Descargas/USB_Secure
+%sudo ALL=(ALL) NOPASSWD: /usr/local/bin/USB_Secure

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-APP="/home/sud4k/Descargas/USB_Secure"
+APP="/usr/local/bin/USB_Secure"
 
 if [ ! -f "$APP" ]; then
     notify-send "USB Secure" "Error: no se encuentra $APP" -i dialog-error

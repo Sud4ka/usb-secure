@@ -1,9 +1,9 @@
 #!/bin/bash
 # Fallback wrapper using pkexec (no NOPASSWD needed)
-APP="/home/sud4k/Descargas/USB_Secure"
+APP="/usr/local/bin/USB_Secure"
 
 if ! command -v pkexec &>/dev/null; then
-    exec /home/sud4k/.local/bin/usb-secure "$@"
+    exec /usr/local/bin/usb-secure "$@"
 fi
 
 exec pkexec env DISPLAY="$DISPLAY" XAUTHORITY="$XAUTHORITY" \
